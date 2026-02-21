@@ -191,7 +191,7 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 | `NOTION_TOKEN`          | `secret_...`（Step 3-1 で取得） |
 | `NOTION_DATABASE_ID`    | 32 文字の ID（Step 3-4 で取得）  |
 
-3. 変数を追加すると自動で再デプロイされる
+3. 5つ入力し終えたら、画面左上に出る **「Deploy」** ボタンをクリックして反映する
 
 #### 4-5. デプロイ URL を確認
 

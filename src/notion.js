@@ -90,9 +90,7 @@ async function createPage(title, markdownContent, channelId) {
   const response = await notion.pages.create({
     parent: { database_id: databaseId },
     properties: {
-      // データベースのタイトルプロパティ名が "Name" の場合
-      // 異なる場合はここを変更してください
-      Name: {
+      名前: {
         title: [{ text: { content: title } }],
       },
     },

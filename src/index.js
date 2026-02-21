@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const { App, ExpressReceiver } = require('@slack/bolt');
 const { loadConfig } = require('./config');
-const { addMessage, getMessages, clearMessages, getBufferStatus } = require('./buffer');
+const { addMessage, getMessages, clearMessages, getChannelMessages, clearChannelMessages, getBufferStatus } = require('./buffer');
 const { summarize } = require('./openai');
 const { createPage, appendToPage } = require('./notion');
 
@@ -83,9 +83,10 @@ app.event('reaction_added', async ({ event, client, logger }) => {
   const label = config.reactions[reaction];
   const isTrigger = reaction === config.trigger_reaction;
   const isThreadCollect = reaction === config.thread_collect_reaction;
+  const isGlobalTrigger = reaction === config.global_trigger_reaction;
 
   // 設定に含まれないリアクションは無視
-  if (!label && !isTrigger && !isThreadCollect) return;
+  if (!label && !isTrigger && !isThreadCollect && !isGlobalTrigger) return;
 
   // メッセージを取得してスレッドキーを決定
   let msg;
@@ -126,6 +127,83 @@ app.event('reaction_added', async ({ event, client, logger }) => {
     } catch (err) {
       logger.error(`[${threadKey}] スレッド取得エラー:`, err);
     }
+    return;
+  }
+
+  // ==================
+  // 全体トリガーリアクション → チャンネル全バッファをまとめ実行
+  // ==================
+  if (isGlobalTrigger) {
+    const globalKey = `${channelId}:global`;
+
+    if (processingThreads.has(globalKey)) {
+      logger.info(`[${channelId}] 全体まとめ処理中のため重複リクエストを無視`);
+      return;
+    }
+
+    const messages = getChannelMessages(channelId);
+
+    if (messages.length === 0) {
+      logger.info(`[${channelId}] 全体トリガーが押されましたが、バッファが空です`);
+      return;
+    }
+
+    processingThreads.add(globalKey);
+    logger.info(`[${channelId}] 全体まとめ開始: ${messages.length}件のメッセージ`);
+
+    try {
+      const summary = await summarize(messages, config);
+
+      const sorted = [...messages].sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts));
+      const sourceLines = sorted.map((m) => {
+        const slackLink = `https://app.slack.com/archives/${channelId}/p${m.ts.replace('.', '')}`;
+        const date = new Date(parseFloat(m.ts) * 1000).toLocaleString('ja-JP', {
+          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+        });
+        const userRef = m.user ? `<@${m.user}>` : '不明';
+        const preview = m.text?.replace(/\n/g, ' ').slice(0, 80) || '';
+        return `- [${m.label}] ${date} ${userRef}: ${preview} → [Slackで確認](${slackLink})`;
+      });
+      const sourceSection = '\n\n---\n\n## 元メッセージ\n\n' + sourceLines.join('\n');
+
+      clearChannelMessages(channelId);
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+      let pageUrl;
+
+      if (pageStore.has(globalKey)) {
+        const { id, url } = pageStore.get(globalKey);
+        const appendContent = `\n\n---\n\n## 追記 ${dateStr} ${timeStr}\n\n` + summary + sourceSection;
+        await appendToPage(id, appendContent);
+        pageUrl = url;
+        logger.info(`[${channelId}] 全体Notionページに追記しました: ${pageUrl}`);
+      } else {
+        const prefix = config.notion_title_prefix || 'Slackまとめ';
+        const title = `${prefix}（全体） ${dateStr}`;
+        const fullContent = summary + sourceSection;
+        const page = await createPage(title, fullContent);
+        pageStore.set(globalKey, page);
+        pageUrl = page.url;
+        logger.info(`[${channelId}] 全体NotionページをNotionに作成しました: ${pageUrl}`);
+      }
+
+      try {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: `チャンネル全体のまとめをNotionに保存しました :white_check_mark:\n${pageUrl}`,
+        });
+      } catch (notifyErr) {
+        logger.warn('Slack通知の送信に失敗しました:', notifyErr.message);
+      }
+    } catch (err) {
+      logger.error('全体まとめ処理でエラーが発生しました:', err);
+    } finally {
+      processingThreads.delete(globalKey);
+    }
+
     return;
   }
 

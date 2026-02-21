@@ -33,6 +33,9 @@ function loadConfig() {
   if (process.env.NOTION_TITLE_PREFIX) {
     cachedConfig.notion_title_prefix = process.env.NOTION_TITLE_PREFIX;
   }
+  if (process.env.GLOBAL_TRIGGER_REACTION) {
+    cachedConfig.global_trigger_reaction = process.env.GLOBAL_TRIGGER_REACTION;
+  }
 
   return cachedConfig;
 }

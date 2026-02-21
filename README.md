@@ -8,17 +8,19 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 
 1. Slack のメッセージに `:bookmark:` などのリアクションを付ける
 2. Bot がラベル付きでメモとして蓄積する
-3. `:checkered_flag:` を押すと → OpenAI が整理・要約 → Notion に自動保存
-4. Slack に「保存しました」と通知が届く
+3. `:checkered_flag:` でスレッド単位、または `:dart:` でチャンネル全体をまとめる
+4. OpenAI が整理・要約 → Notion に自動保存、Slack に通知が届く
 
-| リアクション         | 意味               |
-| -------------------- | ------------------ |
-| :bookmark:           | 主題               |
-| :thinking_face:      | 検討               |
-| :memo:               | 要件               |
-| :sos:                | 相談               |
-| :speech_balloon:     | コメント           |
-| :checkered_flag:     | **まとめ実行**     |
+| リアクション           | 意味                                         |
+| ---------------------- | -------------------------------------------- |
+| :bookmark:             | 主題                                         |
+| :thinking_face:        | 検討                                         |
+| :memo:                 | 要件                                         |
+| :sos:                  | 相談                                         |
+| :speech_balloon:       | コメント                                     |
+| :spiral_notepad:       | **スレッド全収集**（スレッド内を一括バッファ）|
+| :checkered_flag:       | **まとめ実行**（スレッド単位）               |
+| :dart:                 | **全体まとめ実行**（チャンネル全バッファ）   |
 
 絵文字の種類や意味は自由に変更できます。→ [カスタマイズ方法はこちら](#カスタマイズ)
 
@@ -224,9 +226,12 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 ### 動作確認
 
-1. Bot を招待したチャンネルでメッセージに `:bookmark:` を付けてみる
-2. いくつかメッセージにリアクションをしたあと `:checkered_flag:` を押す
+1. Bot を招待したチャンネルでメッセージに `:bookmark:` などのリアクションを付ける
+2. いくつかメッセージにリアクションをしたあと `:checkered_flag:` を押す（スレッド単位）
+   または `:dart:` を押す（チャンネル全体）
 3. Notion に新しいページが作成され、Slack に通知が届けば成功です
+
+> スレッド内をまとめて収集したい場合は `:spiral_notepad:` を先に押してからトリガーを押してください。
 
 ---
 
@@ -238,11 +243,14 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 Railway の **Variables** タブに以下の変数を追加するだけで変更できます。
 
-| 変数名                 | 形式・例                                                       |
-| ---------------------- | -------------------------------------------------------------- |
-| `REACTIONS`            | `bookmark:主題,thinking_face:検討,memo:要件,sos:相談,speech_balloon:コメント` |
-| `TRIGGER_REACTION`     | `checkered_flag`                                               |
-| `NOTION_TITLE_PREFIX`  | `週次議事録`                                                   |
+| 変数名                      | 形式・例                                                       |
+| --------------------------- | -------------------------------------------------------------- |
+| `REACTIONS`                 | `bookmark:主題,thinking_face:検討,memo:要件,sos:相談,speech_balloon:コメント` |
+| `TRIGGER_REACTION`          | `checkered_flag`（スレッド単位のまとめ実行）                  |
+| `THREAD_COLLECT_REACTION`   | `spiral_notepad`（スレッド全収集）                            |
+| `THREAD_COLLECT_LABEL`      | `スレッド`（収集時に付けるラベル名）                          |
+| `GLOBAL_TRIGGER_REACTION`   | `dart`（チャンネル全体のまとめ実行）                          |
+| `NOTION_TITLE_PREFIX`       | `週次議事録`                                                   |
 
 追加後は **Deploy** を押して反映してください。
 
@@ -258,9 +266,13 @@ reactions:
   sos: 相談
   speech_balloon: コメント
 
-trigger_reaction: checkered_flag   # これが押されたらまとめ実行
+thread_collect_reaction: spiral_notepad  # スレッド内を一括バッファに追加
+thread_collect_label: スレッド           # 収集時に付けるラベル名
 
-notion_title_prefix: "Slackまとめ"  # Notionページのタイトルの先頭文字
+trigger_reaction: checkered_flag         # スレッド単位でまとめ実行
+global_trigger_reaction: dart            # チャンネル全バッファをまとめ実行
+
+notion_title_prefix: "Slackまとめ"       # Notionページのタイトルの先頭文字
 ```
 
 絵文字名は Slack の `:emoji_name:` のコロンを除いた部分です（例：`:bookmark:` → `bookmark`）。

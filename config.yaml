@@ -13,8 +13,11 @@ reactions:
 thread_collect_reaction: spiral_notepad
 thread_collect_label: スレッド
 
-# これが押されたらまとめを実行してNotionに保存
+# これが押されたらまとめを実行してNotionに保存（スレッド単位）
 trigger_reaction: checkered_flag
+
+# これが押されたらチャンネル全体のバッファをまとめてNotionに保存（全スレッド横断）
+global_trigger_reaction: dart
 
 # Notionページのタイトルプレフィックス
 notion_title_prefix: "Slackまとめ"

@@ -129,7 +129,8 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 
 #### 3-4. データベース ID を取得
 
-データベースページを開いたときの URL を確認：
+1. テーブル右上にある **↗**（展開アイコン）をクリックしてデータベースを全画面で開く
+2. ブラウザのアドレスバーの URL を確認：
 
 ```
 https://www.notion.so/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?v=...

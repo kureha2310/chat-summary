@@ -151,14 +151,21 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 2. 右上の **「Login」** をクリック
 3. **「Login with GitHub」** を選択してログイン
 
-#### 4-2. 新規プロジェクトを作成
+#### 4-2. 利用規約に同意する
+
+ログイン直後に英語の規約同意画面が出ます。内容は「違法なものをホストしません」という確認です。
+
+- (1/2) Privacy and Data Policy → **下までスクロール**して同意する
+- (2/2) Fair Use Policy → **「I will not deploy any of that」**（そういうものはデプロイしません）をクリック
+
+#### 4-3. 新規プロジェクトを作成
 
 1. ログイン後、**「New Project」** をクリック
 2. 表示されるメニューから **「GitHub Repository」** を選択
 3. リポジトリ一覧から **「chat-summary」** を選択
    （表示されない場合は「Configure GitHub App」から権限を付与する）
 
-#### 4-3. 環境変数を設定
+#### 4-4. 環境変数を設定
 
 1. デプロイ後、プロジェクト画面の **「Variables」** タブをクリック
 2. **「New Variable」** で以下の 5 つを追加：
@@ -173,7 +180,7 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 3. 変数を追加すると自動で再デプロイされる
 
-#### 4-4. デプロイ URL を確認
+#### 4-5. デプロイ URL を確認
 
 1. プロジェクト画面の **「Settings」** タブを開く
 2. **「Domains」** の欄に URL が表示される（例：`xxxx.up.railway.app`）

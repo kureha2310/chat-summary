@@ -228,9 +228,25 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 ---
 
-## config.yaml のカスタマイズ
+## カスタマイズ
 
-`config.yaml` を書き換えるだけでリアクションの種類と意味を自由に変更できます。
+リアクションの種類・意味・トリガーを自由に変更できます。方法は2つあります。
+
+### 方法 A：Railway の環境変数で変更する（コード不要）
+
+Railway の **Variables** タブに以下の変数を追加するだけで変更できます。
+
+| 変数名                 | 形式・例                                                       |
+| ---------------------- | -------------------------------------------------------------- |
+| `REACTIONS`            | `bookmark:主題,thinking_face:検討,memo:要件,sos:相談,speech_balloon:コメント` |
+| `TRIGGER_REACTION`     | `checkered_flag`                                               |
+| `NOTION_TITLE_PREFIX`  | `週次議事録`                                                   |
+
+追加後は **Deploy** を押して反映してください。
+
+### 方法 B：config.yaml を書き換える（リポジトリを fork した場合）
+
+このリポジトリを fork して自分の GitHub に置いている場合は、`config.yaml` を直接編集できます。
 
 ```yaml
 reactions:

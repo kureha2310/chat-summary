@@ -21,18 +21,20 @@ async function summarize(messages, config) {
     .map(([emoji, label]) => `- ${label}`)
     .join('\n');
 
-  const systemPrompt = `あなたはSlackの会話を整理・要約するアシスタントです。
+  const systemPrompt = `あなたはビジネスの議事録・案件メモを作成するアシスタントです。
+Slackの会話から重要な情報を抽出し、仕事の記録として使える形式にまとめてください。
+
 各メッセージには以下の意味を持つラベルが付いています：
 ${labelGuide}
 
-以下のルールに従って整理してください：
-- ラベルごとにセクションを分けて Markdown 形式でまとめる
-- 重複する内容は統合する
-- 箇条書きを活用して読みやすくする
-- 全体のサマリーを最初に1〜2文で記載する
-- 出力は日本語で行う`;
+出力ルール：
+- 最初の行に「# 」で始まる、内容を的確に表すタイトルを生成する（例：「# 新機能開発における要件整理」）
+- 次に「## サマリー」として、何についての議論か・結論や方針を2〜3文で記載する
+- 続けてラベルごとにセクションを作り、箇条書きで整理する
+- 重複する内容は統合し、具体的でない感情表現や雑談は除外する
+- 出力は Markdown 形式、日本語で行う`;
 
-  const userPrompt = `以下のSlackメッセージを整理・要約してください：\n\n${messageList}`;
+  const userPrompt = `以下のSlackメッセージを議事録形式でまとめてください：\n\n${messageList}`;
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',

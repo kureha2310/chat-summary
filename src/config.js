@@ -10,6 +10,24 @@ function loadConfig() {
   const filePath = path.resolve(__dirname, '../config.yaml');
   const raw = fs.readFileSync(filePath, 'utf8');
   cachedConfig = yaml.load(raw);
+
+  // 環境変数によるオーバーライド
+  // REACTIONS=bookmark:主題,thinking_face:検討,memo:要件
+  if (process.env.REACTIONS) {
+    const reactions = {};
+    process.env.REACTIONS.split(',').forEach((pair) => {
+      const sep = pair.indexOf(':');
+      if (sep > 0) reactions[pair.slice(0, sep).trim()] = pair.slice(sep + 1).trim();
+    });
+    cachedConfig.reactions = reactions;
+  }
+  if (process.env.TRIGGER_REACTION) {
+    cachedConfig.trigger_reaction = process.env.TRIGGER_REACTION;
+  }
+  if (process.env.NOTION_TITLE_PREFIX) {
+    cachedConfig.notion_title_prefix = process.env.NOTION_TITLE_PREFIX;
+  }
+
   return cachedConfig;
 }
 

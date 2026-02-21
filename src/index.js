@@ -23,8 +23,10 @@ for (const key of required) {
 
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  processBeforeResponse: true,
 });
+
+// まとめ処理中のチャンネルを管理（重複実行防止）
+const processingChannels = new Set();
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -54,6 +56,11 @@ app.event('reaction_added', async ({ event, client, logger }) => {
   // トリガーリアクション → まとめ実行
   // ==================
   if (isTrigger) {
+    if (processingChannels.has(channelId)) {
+      logger.info(`[${channelId}] まとめ処理中のため重複リクエストを無視`);
+      return;
+    }
+
     const messages = getMessages(channelId);
 
     if (messages.length === 0) {
@@ -61,6 +68,7 @@ app.event('reaction_added', async ({ event, client, logger }) => {
       return;
     }
 
+    processingChannels.add(channelId);
     logger.info(`[${channelId}] まとめ開始: ${messages.length}件のメッセージ`);
 
     try {
@@ -96,6 +104,8 @@ app.event('reaction_added', async ({ event, client, logger }) => {
       }
     } catch (err) {
       logger.error('まとめ処理でエラーが発生しました:', err);
+    } finally {
+      processingChannels.delete(channelId);
     }
 
     return;

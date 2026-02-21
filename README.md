@@ -195,10 +195,10 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 #### 4-5. デプロイ URL を確認
 
-1. プロジェクト画面の **「Settings」** タブを開く
-2. **「Domains」** の欄に URL が表示される（例：`xxxx.up.railway.app`）
-   （なければ「Generate Domain」をクリックして発行する）
-3. この URL をコピーして Step 5 で使う
+1. サービス画面の **「Settings」** タブを開く
+2. **「Networking」** → **「Public Networking」** の **「Generate Domain」** をクリック
+3. ポート番号の入力欄が出るので **`8080` を消して `3000` と入力** し、**「Generate Domain」** をクリック
+4. `xxxx.up.railway.app` 形式の URL が表示されるのでコピーして Step 5 で使う
 
 ---
 

@@ -8,6 +8,11 @@ reactions:
   sos: 相談
   speech_balloon: コメント
 
+# これが押されたらスレッド内の全メッセージをまとめてバッファに追加
+# （スレッド親または返信どちらに付けても OK）
+thread_collect_reaction: spiral_notepad
+thread_collect_label: スレッド
+
 # これが押されたらまとめを実行してNotionに保存
 trigger_reaction: checkered_flag
 

@@ -3,6 +3,32 @@ const { Client } = require('@notionhq/client');
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
 /**
+ * インライン Markdown リンク [text](url) を Notion rich_text 配列に変換する
+ * @param {string} text
+ * @returns {object[]}
+ */
+function inlineToRichText(text) {
+  const parts = [];
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', text: { content: text.slice(lastIndex, match.index) } });
+    }
+    parts.push({ type: 'text', text: { content: match[1], link: { url: match[2] } } });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', text: { content: text.slice(lastIndex) } });
+  }
+
+  return parts.length > 0 ? parts : [{ type: 'text', text: { content: text } }];
+}
+
+/**
  * Markdown テキストを Notion ブロック配列に変換する
  * @param {string} markdown
  * @returns {object[]}
@@ -13,7 +39,6 @@ function markdownToBlocks(markdown) {
 
   for (const line of lines) {
     if (!line.trim()) {
-      // 空行は段落区切りとして空ブロックを追加
       blocks.push({
         object: 'block',
         type: 'paragraph',
@@ -26,48 +51,43 @@ function markdownToBlocks(markdown) {
       blocks.push({
         object: 'block',
         type: 'heading_3',
-        heading_3: { rich_text: [{ type: 'text', text: { content: line.slice(4) } }] },
+        heading_3: { rich_text: inlineToRichText(line.slice(4)) },
       });
     } else if (line.startsWith('## ')) {
       blocks.push({
         object: 'block',
         type: 'heading_2',
-        heading_2: { rich_text: [{ type: 'text', text: { content: line.slice(3) } }] },
+        heading_2: { rich_text: inlineToRichText(line.slice(3)) },
       });
     } else if (line.startsWith('# ')) {
       blocks.push({
         object: 'block',
         type: 'heading_1',
-        heading_1: { rich_text: [{ type: 'text', text: { content: line.slice(2) } }] },
+        heading_1: { rich_text: inlineToRichText(line.slice(2)) },
       });
     } else if (line.match(/^[-*] /)) {
       blocks.push({
         object: 'block',
         type: 'bulleted_list_item',
-        bulleted_list_item: {
-          rich_text: [{ type: 'text', text: { content: line.slice(2) } }],
-        },
+        bulleted_list_item: { rich_text: inlineToRichText(line.slice(2)) },
       });
     } else if (line.match(/^\d+\. /)) {
-      const content = line.replace(/^\d+\. /, '');
       blocks.push({
         object: 'block',
         type: 'numbered_list_item',
-        numbered_list_item: {
-          rich_text: [{ type: 'text', text: { content } }],
-        },
+        numbered_list_item: { rich_text: inlineToRichText(line.replace(/^\d+\. /, '')) },
       });
     } else if (line.startsWith('> ')) {
       blocks.push({
         object: 'block',
         type: 'quote',
-        quote: { rich_text: [{ type: 'text', text: { content: line.slice(2) } }] },
+        quote: { rich_text: inlineToRichText(line.slice(2)) },
       });
     } else {
       blocks.push({
         object: 'block',
         type: 'paragraph',
-        paragraph: { rich_text: [{ type: 'text', text: { content: line } }] },
+        paragraph: { rich_text: inlineToRichText(line) },
       });
     }
   }

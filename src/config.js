@@ -24,6 +24,12 @@ function loadConfig() {
   if (process.env.TRIGGER_REACTION) {
     cachedConfig.trigger_reaction = process.env.TRIGGER_REACTION;
   }
+  if (process.env.THREAD_COLLECT_REACTION) {
+    cachedConfig.thread_collect_reaction = process.env.THREAD_COLLECT_REACTION;
+  }
+  if (process.env.THREAD_COLLECT_LABEL) {
+    cachedConfig.thread_collect_label = process.env.THREAD_COLLECT_LABEL;
+  }
   if (process.env.NOTION_TITLE_PREFIX) {
     cachedConfig.notion_title_prefix = process.env.NOTION_TITLE_PREFIX;
   }

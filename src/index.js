@@ -82,9 +82,10 @@ app.event('reaction_added', async ({ event, client, logger }) => {
 
   const label = config.reactions[reaction];
   const isTrigger = reaction === config.trigger_reaction;
+  const isThreadCollect = reaction === config.thread_collect_reaction;
 
   // 設定に含まれないリアクションは無視
-  if (!label && !isTrigger) return;
+  if (!label && !isTrigger && !isThreadCollect) return;
 
   // メッセージを取得してスレッドキーを決定
   let msg;
@@ -102,6 +103,31 @@ app.event('reaction_added', async ({ event, client, logger }) => {
 
   // threadKey: スレッド内なら親tsで統一、単独メッセージは自身のts
   const threadKey = `${channelId}:${msg.thread_ts || msg.ts}`;
+
+  // ==================
+  // スレッド全収集リアクション → スレッド内全件をバッファに追加
+  // ==================
+  if (isThreadCollect) {
+    const collectLabel = config.thread_collect_label || 'スレッド';
+    const parentTs = msg.thread_ts || msg.ts;
+
+    try {
+      const threadResult = await client.conversations.replies({
+        channel: channelId,
+        ts: parentTs,
+      });
+
+      const threadMsgs = threadResult.messages || [];
+      for (const m of threadMsgs) {
+        if (!m.text) continue;
+        addMessage(threadKey, { label: collectLabel, text: m.text, ts: m.ts, user: m.user });
+      }
+      logger.info(`[${threadKey}] スレッド全収集: ${threadMsgs.length}件をバッファに追加`);
+    } catch (err) {
+      logger.error(`[${threadKey}] スレッド取得エラー:`, err);
+    }
+    return;
+  }
 
   // ==================
   // トリガーリアクション → まとめ実行

@@ -145,34 +145,40 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 ### Step 4：Railway にデプロイする
 
-#### 4-1. デプロイボタンをクリック
+#### 4-1. Railway にログイン
 
-README 上部の **Deploy on Railway** ボタンをクリックします。
+1. https://railway.app を開く
+2. 右上の **「Login」** をクリック
+3. **「Login with GitHub」** を選択してログイン
 
-または、以下の URL を開いてください：
-https://railway.app/new/template?template=https://github.com/kureha2310/chat-summary
+#### 4-2. 新規プロジェクトを作成
 
-#### 4-2. GitHub でログイン
+1. ログイン後、**「New Project」** をクリック
+2. 表示されるメニューから **「GitHub Repository」** を選択
+3. リポジトリ一覧から **「chat-summary」** を選択
+   （表示されない場合は「Configure GitHub App」から権限を付与する）
 
-Railway のサインアップ画面が出たら **GitHub でログイン** を選択してください。
+#### 4-3. 環境変数を設定
 
-#### 4-3. 環境変数を入力
+1. デプロイ後、プロジェクト画面の **「Variables」** タブをクリック
+2. **「New Variable」** で以下の 5 つを追加：
 
-デプロイ画面で以下の 5 つを入力します：
-
-| 変数名                  | 入力する値                      |
-| ----------------------- | ------------------------------- |
-| `SLACK_BOT_TOKEN`       | `xoxb-...`（Step 1-3 で取得） |
+| 変数名                  | 入力する値                        |
+| ----------------------- | --------------------------------- |
+| `SLACK_BOT_TOKEN`       | `xoxb-...`（Step 1-3 で取得）   |
 | `SLACK_SIGNING_SECRET`  | Signing Secret（Step 1-4 で取得）|
-| `OPENAI_API_KEY`        | `sk-...`（Step 2 で取得）      |
-| `NOTION_TOKEN`          | `secret_...`（Step 3-1 で取得）|
-| `NOTION_DATABASE_ID`    | 32 文字の ID（Step 3-4 で取得）|
+| `OPENAI_API_KEY`        | `sk-...`（Step 2 で取得）        |
+| `NOTION_TOKEN`          | `secret_...`（Step 3-1 で取得） |
+| `NOTION_DATABASE_ID`    | 32 文字の ID（Step 3-4 で取得）  |
 
-#### 4-4. Deploy をクリック
+3. 変数を追加すると自動で再デプロイされる
 
-デプロイが完了すると Railway のダッシュボードに URL が表示されます（例：`xxxx.up.railway.app`）。
+#### 4-4. デプロイ URL を確認
 
-この URL をコピーして Step 5 で使います。
+1. プロジェクト画面の **「Settings」** タブを開く
+2. **「Domains」** の欄に URL が表示される（例：`xxxx.up.railway.app`）
+   （なければ「Generate Domain」をクリックして発行する）
+3. この URL をコピーして Step 5 で使う
 
 ---
 

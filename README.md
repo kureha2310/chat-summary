@@ -64,8 +64,10 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 
 #### 1-3. App をワークスペースにインストール
 
-1. 左メニュー **OAuth & Permissions** → **Install to Workspace**
-2. 認証後に表示される **Bot User OAuth Token**（`xoxb-` で始まる文字列）をコピーして保管
+1. 左メニュー **OAuth & Permissions** を開く
+2. **「Install to ○○のワークスペース」** というボタンをクリック（○○はあなたのメールアドレス）
+3. 確認画面が出たら **「許可する」** をクリック
+4. 元の画面に戻ると **Bot User OAuth Token**（`xoxb-` で始まる文字列）が表示されるのでコピーして保管
    → これが `SLACK_BOT_TOKEN` です
 
 #### 1-4. Signing Secret を取得

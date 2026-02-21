@@ -2,6 +2,7 @@
 # キー: Slackの絵文字名（コロンなし）
 # 値: OpenAIに渡すラベル（日本語可）
 reactions:
+  pushpin: メモ
   bookmark: 主題
   thinking_face: 検討
   memo: 要件

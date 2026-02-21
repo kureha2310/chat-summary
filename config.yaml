@@ -1,0 +1,15 @@
+# リアクション絵文字 → 意味のマッピング
+# キー: Slackの絵文字名（コロンなし）
+# 値: OpenAIに渡すラベル（日本語可）
+reactions:
+  bookmark: 主題
+  thinking_face: 検討
+  memo: 要件
+  sos: 相談
+  speech_balloon: コメント
+
+# これが押されたらまとめを実行してNotionに保存
+trigger_reaction: checkered_flag
+
+# Notionページのタイトルプレフィックス
+notion_title_prefix: "Slackまとめ"

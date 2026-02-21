@@ -97,7 +97,20 @@ async function createPage(title, markdownContent, channelId) {
     children: blocks,
   });
 
-  return response.url;
+  return { id: response.id, url: response.url };
 }
 
-module.exports = { createPage };
+/**
+ * 既存の Notion ページにブロックを追記する
+ * @param {string} pageId - 追記先のページ ID
+ * @param {string} markdownContent - 追記する Markdown コンテンツ
+ */
+async function appendToPage(pageId, markdownContent) {
+  const blocks = markdownToBlocks(markdownContent);
+  await notion.blocks.children.append({
+    block_id: pageId,
+    children: blocks,
+  });
+}
+
+module.exports = { createPage, appendToPage };

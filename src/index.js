@@ -4,7 +4,7 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const { loadConfig } = require('./config');
 const { addMessage, getMessages, clearMessages, getBufferStatus } = require('./buffer');
 const { summarize } = require('./openai');
-const { createPage } = require('./notion');
+const { createPage, appendToPage } = require('./notion');
 
 // 必須の環境変数チェック
 const required = [
@@ -25,13 +25,47 @@ const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 
-// まとめ処理中のチャンネルを管理（重複実行防止）
-const processingChannels = new Set();
+// まとめ処理中のスレッドを管理（重複実行防止）
+const processingThreads = new Set();
+
+// スレッドごとの Notion ページ管理（差分追記用）
+// key: threadKey, value: { id, url }
+const pageStore = new Map();
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   receiver,
 });
+
+// ==================
+// メッセージを取得してスレッドキーと本文を返すユーティリティ
+// ==================
+async function fetchMessage(client, channelId, ts) {
+  const result = await client.conversations.history({
+    channel: channelId,
+    latest: ts,
+    inclusive: true,
+    limit: 1,
+  });
+
+  if (!result.messages || result.messages.length === 0) return null;
+  const msg = result.messages[0];
+
+  // スレッド返信の場合はスレッドから取得
+  if (msg.ts !== ts && msg.thread_ts) {
+    const threadResult = await client.conversations.replies({
+      channel: channelId,
+      ts: msg.thread_ts,
+      latest: ts,
+      inclusive: true,
+      limit: 1,
+    });
+    const threadMsg = threadResult.messages?.find((m) => m.ts === ts);
+    if (threadMsg) return threadMsg;
+  }
+
+  return msg;
+}
 
 // ==================
 // reaction_added イベントハンドラ
@@ -52,24 +86,41 @@ app.event('reaction_added', async ({ event, client, logger }) => {
   // 設定に含まれないリアクションは無視
   if (!label && !isTrigger) return;
 
+  // メッセージを取得してスレッドキーを決定
+  let msg;
+  try {
+    msg = await fetchMessage(client, channelId, ts);
+  } catch (err) {
+    logger.error(`[${channelId}] メッセージ取得エラー:`, err);
+    return;
+  }
+
+  if (!msg) {
+    logger.warn(`[${channelId}] メッセージが見つかりませんでした (ts: ${ts})`);
+    return;
+  }
+
+  // threadKey: スレッド内なら親tsで統一、単独メッセージは自身のts
+  const threadKey = `${channelId}:${msg.thread_ts || msg.ts}`;
+
   // ==================
   // トリガーリアクション → まとめ実行
   // ==================
   if (isTrigger) {
-    if (processingChannels.has(channelId)) {
-      logger.info(`[${channelId}] まとめ処理中のため重複リクエストを無視`);
+    if (processingThreads.has(threadKey)) {
+      logger.info(`[${threadKey}] まとめ処理中のため重複リクエストを無視`);
       return;
     }
 
-    const messages = getMessages(channelId);
+    const messages = getMessages(threadKey);
 
     if (messages.length === 0) {
-      logger.info(`[${channelId}] トリガーが押されましたが、バッファが空です`);
+      logger.info(`[${threadKey}] トリガーが押されましたが、バッファが空です`);
       return;
     }
 
-    processingChannels.add(channelId);
-    logger.info(`[${channelId}] まとめ開始: ${messages.length}件のメッセージ`);
+    processingThreads.add(threadKey);
+    logger.info(`[${threadKey}] まとめ開始: ${messages.length}件のメッセージ`);
 
     try {
       // OpenAI で要約
@@ -86,27 +137,44 @@ app.event('reaction_added', async ({ event, client, logger }) => {
         const preview = m.text?.replace(/\n/g, ' ').slice(0, 80) || '';
         return `- [${m.label}] ${date} ${userRef}: ${preview} → [Slackで確認](${slackLink})`;
       });
-      const fullContent = summary + '\n\n---\n\n## 元メッセージ\n\n' + sourceLines.join('\n');
+      const sourceSection = '\n\n---\n\n## 元メッセージ\n\n' + sourceLines.join('\n');
 
-      // Notionページのタイトルを作成
+      // バッファをクリア
+      clearMessages(threadKey);
+
       const now = new Date();
       const dateStr = now.toLocaleDateString('ja-JP', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
       });
-      const prefix = config.notion_title_prefix || 'Slackまとめ';
-      const title = `${prefix} ${dateStr}`;
+      const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 
-      // Notion にページ作成
-      const pageUrl = await createPage(title, fullContent, channelId);
+      let pageUrl;
 
-      // バッファをクリア
-      clearMessages(channelId);
+      if (pageStore.has(threadKey)) {
+        // ==================
+        // 既存ページに追記
+        // ==================
+        const { id, url } = pageStore.get(threadKey);
+        const appendContent = `\n\n---\n\n## 追記 ${dateStr} ${timeStr}\n\n` + summary + sourceSection;
+        await appendToPage(id, appendContent);
+        pageUrl = url;
+        logger.info(`[${threadKey}] Notionページに追記しました: ${pageUrl}`);
+      } else {
+        // ==================
+        // 新規ページを作成
+        // ==================
+        const prefix = config.notion_title_prefix || 'Slackまとめ';
+        const title = `${prefix} ${dateStr}`;
+        const fullContent = summary + sourceSection;
+        const page = await createPage(title, fullContent);
+        pageStore.set(threadKey, page);
+        pageUrl = page.url;
+        logger.info(`[${threadKey}] Notionにページを作成しました: ${pageUrl}`);
+      }
 
-      logger.info(`[${channelId}] Notionにページを作成しました: ${pageUrl}`);
-
-      // Slack に完了通知（オプション: 失敗しても全体は止めない）
+      // Slack に完了通知（失敗しても全体は止めない）
       try {
         await client.chat.postMessage({
           channel: channelId,
@@ -118,7 +186,7 @@ app.event('reaction_added', async ({ event, client, logger }) => {
     } catch (err) {
       logger.error('まとめ処理でエラーが発生しました:', err);
     } finally {
-      processingChannels.delete(channelId);
+      processingThreads.delete(threadKey);
     }
 
     return;
@@ -127,43 +195,8 @@ app.event('reaction_added', async ({ event, client, logger }) => {
   // ==================
   // 通常のリアクション → バッファにメッセージを追加
   // ==================
-  try {
-    const result = await client.conversations.history({
-      channel: channelId,
-      latest: ts,
-      inclusive: true,
-      limit: 1,
-    });
-
-    if (!result.messages || result.messages.length === 0) {
-      logger.warn(`[${channelId}] メッセージが見つかりませんでした (ts: ${ts})`);
-      return;
-    }
-
-    const msg = result.messages[0];
-
-    // スレッド返信にも対応（tsが一致しない場合はスレッドを検索）
-    if (msg.ts !== ts && msg.thread_ts) {
-      const threadResult = await client.conversations.replies({
-        channel: channelId,
-        ts: msg.thread_ts,
-        latest: ts,
-        inclusive: true,
-        limit: 1,
-      });
-      const threadMsg = threadResult.messages?.find((m) => m.ts === ts);
-      if (threadMsg) {
-        addMessage(channelId, { label, text: threadMsg.text, ts, user: threadMsg.user });
-        logger.info(`[${channelId}] バッファに追加(スレッド): [${label}] ${threadMsg.text?.slice(0, 60)}`);
-        return;
-      }
-    }
-
-    addMessage(channelId, { label, text: msg.text, ts, user: msg.user });
-    logger.info(`[${channelId}] バッファに追加: [${label}] ${msg.text?.slice(0, 60)}`);
-  } catch (err) {
-    logger.error(`[${channelId}] メッセージ取得エラー:`, err);
-  }
+  addMessage(threadKey, { label, text: msg.text, ts: msg.ts, user: msg.user });
+  logger.info(`[${threadKey}] バッファに追加: [${label}] ${msg.text?.slice(0, 60)}`);
 });
 
 // ==================
@@ -173,6 +206,7 @@ receiver.router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
     buffer: getBufferStatus(),
+    pages: Object.fromEntries(pageStore),
   });
 });
 

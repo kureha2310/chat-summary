@@ -2,8 +2,6 @@
 
 Slack のリアクションを起点に会話を収集し、OpenAI で整理して Notion に自動保存する Bot です。
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/kureha2310/chat-summary)
-
 ---
 
 ## こんな使い方をします
@@ -26,20 +24,28 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 
 ---
 
-## セットアップガイド
+## 費用について
 
-### はじめに：用意するもの
+| サービス | 費用 | 備考 |
+| -------- | ---- | ---- |
+| Slack    | 無料 | 既存のワークスペースをそのまま使える |
+| OpenAI   | 従量課金（少額） | gpt-4o-mini 使用。1回のまとめで数円程度 |
+| Notion   | 無料 | |
+| Railway  | 最初の $5 は無料 → 以降 月$5 | 詳細は下記 |
 
-以下の 4 つのサービスのアカウントが必要です。すべて無料で始められます（OpenAI のみ従量課金）。
+### Railway の料金について
 
-| サービス  | 用途                     | 費用          |
-| --------- | ------------------------ | ------------- |
-| Slack     | Bot を動かすワークスペース | 無料          |
-| OpenAI    | AI による要約            | 従量課金（少額）|
-| Notion    | まとめの保存先           | 無料          |
-| Railway   | Bot のホスティング       | 無料枠あり    |
+Railway は新規登録すると **$5 分のクレジット（Trial プラン）** がもらえます。クレジットカード不要で始められます。
+
+Trial を使い切った後は **Hobby プラン（月 $5）** へのアップグレードが必要です（クレジットカード登録が必要）。Hobby プランには毎月 $5 のクレジットが付いてくるため、このボット程度の軽い用途（常時 RAM 約 60MB、CPU ほぼ 0）であれば **実質 $0〜1/月** で運用できます。
+
+> Railway の最新料金は [railway.app/pricing](https://railway.app/pricing) で確認してください。
 
 ---
+
+## セットアップガイド
+
+4 つのサービスのアカウントが必要です。順番に設定していきます。
 
 ### Step 1：Slack App を作る
 
@@ -93,7 +99,7 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 3. 表示されたキー（`sk-` で始まる文字列）をコピーして保管
    → これが `OPENAI_API_KEY` です
 
-> **費用の目安**：gpt-4o-mini を使用。1回のまとめで数円程度（数十メッセージの場合）。
+> 使いすぎを防ぐために [OpenAI の使用量上限](https://platform.openai.com/settings/organization/limits) を設定しておくことをおすすめします。
 
 ---
 
@@ -151,11 +157,6 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 2. 右上の **「Login」** をクリック
 3. **「Login with GitHub」** を選択してログイン
 
-> **Railway の料金について**
-> 新規登録すると「Trial」プランで始まります。**30日間または$5.00（約750円）** の無料枠があります。
-> 継続して使う場合は月$5の「Hobby」プランへのアップグレードが必要です（クレジットカード登録が必要）。
-> Bot を常時稼働させる場合は Hobby プランを推奨します。
-
 #### 4-2. 利用規約に同意する
 
 ログイン直後に英語の規約同意画面が出ます。内容は「違法なものをホストしません」という確認です。
@@ -212,7 +213,7 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
    ```
    例：`https://xxxx.up.railway.app/slack/events`
 4. URL を入力すると Slack が確認テストを行い「Verified ✓」と表示されれば OK
-5. **Subscribe to bot events** に `reaction_added` を追加
+5. **Subscribe to bot events** を展開 → **「Add Bot User Event」** → `reaction_added` を追加
 6. **Save Changes** をクリック
 
 これで完了です！
@@ -259,6 +260,5 @@ notion_title_prefix: "Slackまとめ"  # Notionページのタイトルの先頭
 
 ## 注意事項
 
-- バッファはメモリ上に保存されるため、**Bot を再起動するとクリアされます**（Railway の無料プランは一定時間でスリープします）
-- OpenAI API の利用には費用がかかります。使いすぎを防ぐために [OpenAI の使用量上限](https://platform.openai.com/settings/organization/limits) を設定しておくことをおすすめします
+- バッファはメモリ上に保存されるため、**Bot を再起動するとクリアされます**
 - Notion データベースのタイトルプロパティが `名前` でない場合は `src/notion.js` の `名前:` をその名前に変更してください

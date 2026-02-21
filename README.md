@@ -130,12 +130,13 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 #### 3-4. データベース ID を取得
 
 1. テーブル右上にある **↗**（展開アイコン）をクリックしてデータベースを全画面で開く
-2. ブラウザのアドレスバーの URL を確認：
+2. ブラウザのアドレスバーの URL を確認する
+3. `notion.so/` の直後から `?v=` の直前までの **32文字** をコピーする
 
+例：
 ```
-https://www.notion.so/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?v=...
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                       ここの 32 文字が DATABASE_ID
+notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
+          ←----------32文字----------→
 ```
 
 → これが `NOTION_DATABASE_ID` です

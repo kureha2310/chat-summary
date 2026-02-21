@@ -20,39 +20,7 @@ Slack のリアクションを起点に会話を収集し、OpenAI で整理し�
 | :speech_balloon:     | コメント           |
 | :checkered_flag:     | **まとめ実行**     |
 
-リアクションの種類・意味・トリガーは自由に変更できます。方法は2つあります。
-
-### 方法 A：Railway の環境変数で変更する（コード不要）
-
-Railway の **Variables** タブに以下の変数を追加するだけで変更できます。
-
-| 変数名                 | 形式・例                                                       |
-| ---------------------- | -------------------------------------------------------------- |
-| `REACTIONS`            | `bookmark:主題,thinking_face:検討,memo:要件,sos:相談,speech_balloon:コメント` |
-| `TRIGGER_REACTION`     | `checkered_flag`                                               |
-| `NOTION_TITLE_PREFIX`  | `週次議事録`                                                   |
-
-追加後は **Deploy** を押して反映してください。
-
-### 方法 B：config.yaml を書き換える（リポジトリを fork した場合）
-
-このリポジトリを fork して自分の GitHub に置いている場合は、`config.yaml` を直接編集できます。
-
-```yaml
-reactions:
-  bookmark: 主題          # :bookmark: が押されたら「主題」としてメモ
-  thinking_face: 検討
-  memo: 要件
-  sos: 相談
-  speech_balloon: コメント
-
-trigger_reaction: checkered_flag   # これが押されたらまとめ実行
-
-notion_title_prefix: "Slackまとめ"  # Notionページのタイトルの先頭文字
-```
-
-絵文字名は Slack の `:emoji_name:` のコロンを除いた部分です（例：`:bookmark:` → `bookmark`）。
-変更後は Railway のダッシュボードで **Redeploy** してください。
+絵文字の種類や意味は自由に変更できます。→ [カスタマイズ方法はこちら](#カスタマイズ)
 
 ---
 
@@ -226,6 +194,8 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 
 3. 5つ入力し終えたら、画面左上に出る **「Deploy」** ボタンをクリックして反映する
 
+> リアクションの絵文字を変えたい場合は、この画面で追加の変数を設定できます。→ [カスタマイズ方法はこちら](#カスタマイズ)
+
 #### 4-5. デプロイ URL を確認
 
 1. サービス画面の **「Settings」** タブを開く
@@ -257,6 +227,44 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 1. Bot を招待したチャンネルでメッセージに `:bookmark:` を付けてみる
 2. いくつかメッセージにリアクションをしたあと `:checkered_flag:` を押す
 3. Notion に新しいページが作成され、Slack に通知が届けば成功です
+
+---
+
+## カスタマイズ
+
+リアクションの種類・意味・トリガーを自由に変更できます。方法は2つあります。
+
+### 方法 A：Railway の環境変数で変更する（コード不要）
+
+Railway の **Variables** タブに以下の変数を追加するだけで変更できます。
+
+| 変数名                 | 形式・例                                                       |
+| ---------------------- | -------------------------------------------------------------- |
+| `REACTIONS`            | `bookmark:主題,thinking_face:検討,memo:要件,sos:相談,speech_balloon:コメント` |
+| `TRIGGER_REACTION`     | `checkered_flag`                                               |
+| `NOTION_TITLE_PREFIX`  | `週次議事録`                                                   |
+
+追加後は **Deploy** を押して反映してください。
+
+### 方法 B：config.yaml を書き換える（リポジトリを fork した場合）
+
+このリポジトリを fork して自分の GitHub に置いている場合は、`config.yaml` を直接編集できます。
+
+```yaml
+reactions:
+  bookmark: 主題          # :bookmark: が押されたら「主題」としてメモ
+  thinking_face: 検討
+  memo: 要件
+  sos: 相談
+  speech_balloon: コメント
+
+trigger_reaction: checkered_flag   # これが押されたらまとめ実行
+
+notion_title_prefix: "Slackまとめ"  # Notionページのタイトルの先頭文字
+```
+
+絵文字名は Slack の `:emoji_name:` のコロンを除いた部分です（例：`:bookmark:` → `bookmark`）。
+変更後は Railway のダッシュボードで **Redeploy** してください。
 
 ---
 

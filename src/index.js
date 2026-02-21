@@ -75,6 +75,19 @@ app.event('reaction_added', async ({ event, client, logger }) => {
       // OpenAI で要約
       const summary = await summarize(messages, config);
 
+      // 元メッセージセクションを作成
+      const sorted = [...messages].sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts));
+      const sourceLines = sorted.map((m) => {
+        const slackLink = `https://app.slack.com/archives/${channelId}/p${m.ts.replace('.', '')}`;
+        const date = new Date(parseFloat(m.ts) * 1000).toLocaleString('ja-JP', {
+          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+        });
+        const userRef = m.user ? `<@${m.user}>` : '不明';
+        const preview = m.text?.replace(/\n/g, ' ').slice(0, 80) || '';
+        return `- [${m.label}] ${date} ${userRef}: ${preview} → [Slackで確認](${slackLink})`;
+      });
+      const fullContent = summary + '\n\n---\n\n## 元メッセージ\n\n' + sourceLines.join('\n');
+
       // Notionページのタイトルを作成
       const now = new Date();
       const dateStr = now.toLocaleDateString('ja-JP', {
@@ -86,7 +99,7 @@ app.event('reaction_added', async ({ event, client, logger }) => {
       const title = `${prefix} ${dateStr}`;
 
       // Notion にページ作成
-      const pageUrl = await createPage(title, summary, channelId);
+      const pageUrl = await createPage(title, fullContent, channelId);
 
       // バッファをクリア
       clearMessages(channelId);

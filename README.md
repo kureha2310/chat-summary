@@ -163,7 +163,10 @@ notion.so/30e7d19f477b80fba082ccfd1e44956c?v=xxxxxxxx...
 1. ログイン後、**「New Project」** をクリック
 2. 表示されるメニューから **「GitHub Repository」** を選択
 3. 「No repositories found」と表示された場合は **「Configure GitHub App」** をクリック
-   → GitHub の権限付与画面が開くので、**「chat-summary」** リポジトリを選択して許可する
+   → GitHub の権限付与画面が開く
+   - リポジトリは **「All repositories」** のままで OK
+   - **「Install & Authorize」** をクリック
+   → 「Confirm access」画面が出たら、GitHub に登録しているメールに届いた**確認コード**を入力して **「Verify」** をクリック
 4. Railway に戻って **「Refresh」** をクリックするとリポジトリが表示されるので **「chat-summary」** を選択
 
 #### 4-4. 環境変数を設定

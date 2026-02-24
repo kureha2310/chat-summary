@@ -22,3 +22,19 @@ global_trigger_reaction: dart
 
 # Notionページのタイトルプレフィックス
 notion_title_prefix: "Slackまとめ"
+
+# ==================
+# 報告自動検出・ログ機能
+# ==================
+# 監視対象チャンネル（カンマ区切りで複数指定可）
+report_watch_channels:
+  - C0AGQAFJ3B3
+
+# 種別ごとの自動リアクション
+report_reactions:
+  bracket_missing: white_check_mark
+  tag_error: eyes
+  allergen_leak: white_check_mark
+  status_change: white_check_mark
+  question: bell
+  info: white_check_mark

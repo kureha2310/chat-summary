@@ -4,7 +4,8 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const { loadConfig } = require('./config');
 const { addMessage, getMessages, clearMessages, getChannelMessages, clearChannelMessages, getBufferStatus } = require('./buffer');
 const { summarize } = require('./openai');
-const { createPage, appendToPage } = require('./notion');
+const { createPage, appendToPage, addReportLog } = require('./notion');
+const { parseReport, looksLikeReport } = require('./report-parser');
 
 // 必須の環境変数チェック
 const required = [
@@ -66,6 +67,101 @@ async function fetchMessage(client, channelId, ts) {
 
   return msg;
 }
+
+// ==================
+// ユーザー名キャッシュ（Slack user ID → 表示名）
+// ==================
+const userNameCache = new Map();
+
+async function resolveUserName(client, userId) {
+  if (userNameCache.has(userId)) return userNameCache.get(userId);
+  try {
+    const res = await client.users.info({ user: userId });
+    const name = res.user?.profile?.display_name || res.user?.real_name || res.user?.name || userId;
+    userNameCache.set(userId, name);
+    return name;
+  } catch {
+    return userId;
+  }
+}
+
+// ==================
+// 確定作業報告の自動検出・ログ
+// ==================
+app.message(async ({ message, client, logger }) => {
+  // Bot自身の投稿、編集、削除は無視
+  if (message.subtype) return;
+  if (message.bot_id) return;
+
+  const config = loadConfig();
+  const watchChannels = config.report_watch_channels || [];
+  if (!watchChannels.includes(message.channel)) return;
+
+  const text = message.text || '';
+  if (!looksLikeReport(text)) return;
+
+  logger.info(`[report-detect] 報告メッセージを検出: ${text.slice(0, 60)}...`);
+
+  try {
+    const userName = await resolveUserName(client, message.user);
+    const items = await parseReport(text, userName);
+
+    if (items.length === 0) {
+      logger.info(`[report-detect] パース結果: 報告アイテムなし`);
+      return;
+    }
+
+    logger.info(`[report-detect] ${items.length}件の報告アイテムを検出`);
+
+    // Slack URL を構築
+    const pTs = message.ts.replace('.', '');
+    const slackUrl = `https://app.slack.com/archives/${message.channel}/p${pTs}`;
+
+    // 日付
+    const date = new Date(parseFloat(message.ts) * 1000).toISOString().slice(0, 10);
+
+    // 種別ごとのリアクションを決定（最も優先度の高いものを付ける）
+    const reportReactions = config.report_reactions || {};
+    const typePriority = ['question', 'allergen_leak', 'bracket_missing', 'tag_error', 'status_change', 'info'];
+    const detectedTypes = new Set(items.map((i) => i.type));
+    let reactionToAdd = 'white_check_mark';
+    for (const t of typePriority) {
+      if (detectedTypes.has(t) && reportReactions[t]) {
+        reactionToAdd = reportReactions[t];
+        break;
+      }
+    }
+
+    // リアクションを付ける
+    try {
+      await client.reactions.add({
+        channel: message.channel,
+        timestamp: message.ts,
+        name: reactionToAdd,
+      });
+    } catch (reactionErr) {
+      // already_reacted は無視
+      if (reactionErr.data?.error !== 'already_reacted') {
+        logger.warn(`[report-detect] リアクション付与失敗:`, reactionErr.message);
+      }
+    }
+
+    // Notion に各アイテムを登録
+    let loggedCount = 0;
+    for (const item of items) {
+      try {
+        await addReportLog(item, slackUrl, date);
+        loggedCount++;
+      } catch (notionErr) {
+        logger.error(`[report-detect] Notion登録失敗:`, notionErr.message);
+      }
+    }
+
+    logger.info(`[report-detect] ${loggedCount}/${items.length}件をNotionに登録完了`);
+  } catch (err) {
+    logger.error(`[report-detect] 処理エラー:`, err);
+  }
+});
 
 // ==================
 // reaction_added イベントハンドラ

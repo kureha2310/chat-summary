@@ -133,4 +133,68 @@ async function appendToPage(pageId, markdownContent) {
   });
 }
 
-module.exports = { createPage, appendToPage };
+/**
+ * 報告ログDBに1行追加する
+ * @param {object} item - parseReport() が返すアイテム
+ * @param {string} item.customer - 顧客名
+ * @param {string} item.product - 商品名
+ * @param {string} item.type - 種別
+ * @param {string} item.detail - 詳細
+ * @param {string|null} item.allergen - アレルゲン
+ * @param {string} item.reporter - 報告者名
+ * @param {string} slackUrl - Slackメッセージへのリンク
+ * @param {string} date - 日付文字列 (YYYY-MM-DD)
+ */
+async function addReportLog(item, slackUrl, date) {
+  const databaseId = process.env.NOTION_REPORT_LOG_DB_ID;
+  if (!databaseId) {
+    console.warn('[report-log] NOTION_REPORT_LOG_DB_ID が未設定のためスキップ');
+    return null;
+  }
+
+  const typeLabels = {
+    bracket_missing: '【】漏れ',
+    tag_error: 'タグ誤認識',
+    allergen_leak: 'アレルゲン漏れ',
+    status_change: 'ステータス変更',
+    question: '質問・相談',
+    info: '情報共有',
+  };
+
+  const properties = {
+    名前: {
+      title: [{ text: { content: `${item.customer} / ${item.product}` } }],
+    },
+    日付: {
+      date: { start: date },
+    },
+    報告者: {
+      rich_text: [{ text: { content: item.reporter } }],
+    },
+    種別: {
+      select: { name: typeLabels[item.type] || item.type },
+    },
+    詳細: {
+      rich_text: [{ text: { content: item.detail || '' } }],
+    },
+    Slack: {
+      url: slackUrl,
+    },
+  };
+
+  // アレルゲンがある場合のみ追加
+  if (item.allergen) {
+    properties['アレルゲン'] = {
+      rich_text: [{ text: { content: item.allergen } }],
+    };
+  }
+
+  const response = await notion.pages.create({
+    parent: { database_id: databaseId },
+    properties,
+  });
+
+  return { id: response.id, url: response.url };
+}
+
+module.exports = { createPage, appendToPage, addReportLog };

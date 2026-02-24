@@ -1,7 +1,7 @@
 const { Client } = require('@notionhq/client');
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-let reportLogDbCache = null;
+const reportLogDbCache = new Map();
 
 /**
  * インライン Markdown リンク [text](url) を Notion rich_text 配列に変換する
@@ -146,8 +146,8 @@ async function appendToPage(pageId, markdownContent) {
  * @param {string} slackUrl - Slackメッセージへのリンク
  * @param {string} date - 日付文字列 (YYYY-MM-DD)
  */
-async function addReportLog(item, slackUrl, date) {
-  const databaseId = process.env.NOTION_REPORT_LOG_DB_ID;
+async function addReportLog(item, slackUrl, date, options = {}) {
+  const databaseId = options.databaseId || process.env.NOTION_REPORT_LOG_DB_ID;
   if (!databaseId) {
     console.warn('[report-log] NOTION_REPORT_LOG_DB_ID が未設定のためスキップ');
     return null;
@@ -205,11 +205,11 @@ async function addReportLog(item, slackUrl, date) {
 }
 
 async function getReportLogDatabase(databaseId) {
-  if (reportLogDbCache && reportLogDbCache.id === databaseId) {
-    return reportLogDbCache;
+  if (reportLogDbCache.has(databaseId)) {
+    return reportLogDbCache.get(databaseId);
   }
   const db = await notion.databases.retrieve({ database_id: databaseId });
-  reportLogDbCache = db;
+  reportLogDbCache.set(databaseId, db);
   return db;
 }
 
@@ -226,8 +226,7 @@ function findPropertyName(properties, candidates, expectedType) {
  * 報告ログDBへのアクセス可否を確認する
  * @returns {Promise<{ ok: boolean, databaseId?: string, message?: string }>}
  */
-async function checkReportLogDatabaseAccess() {
-  const databaseId = process.env.NOTION_REPORT_LOG_DB_ID;
+async function checkReportLogDatabaseAccess(databaseId = process.env.NOTION_REPORT_LOG_DB_ID) {
   if (!databaseId) {
     return {
       ok: false,

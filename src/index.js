@@ -86,6 +86,41 @@ async function resolveUserName(client, userId) {
   }
 }
 
+function resolveReportLogDatabaseId(config, toolKey, channelId) {
+  const routes = config.report_log_databases || {};
+  const byTool = routes.tools && toolKey ? routes.tools[toolKey] : null;
+  const byChannel = routes.channels && channelId ? routes.channels[channelId] : null;
+  return byTool || byChannel || routes.default || process.env.NOTION_REPORT_LOG_DB_ID || null;
+}
+
+function collectReportLogDatabaseTargets(config) {
+  const routes = config.report_log_databases || {};
+  const targets = [];
+  const seenIds = new Set();
+
+  const pushTarget = (label, id) => {
+    if (!id || seenIds.has(id)) return;
+    seenIds.add(id);
+    targets.push({ label, id });
+  };
+
+  pushTarget('env.NOTION_REPORT_LOG_DB_ID', process.env.NOTION_REPORT_LOG_DB_ID);
+  pushTarget('config.report_log_databases.default', routes.default);
+
+  if (routes.tools) {
+    Object.entries(routes.tools).forEach(([tool, id]) => {
+      pushTarget(`config.report_log_databases.tools.${tool}`, id);
+    });
+  }
+  if (routes.channels) {
+    Object.entries(routes.channels).forEach(([channel, id]) => {
+      pushTarget(`config.report_log_databases.channels.${channel}`, id);
+    });
+  }
+
+  return targets;
+}
+
 // ==================
 // 確定作業報告の自動検出・ログ
 // ==================
@@ -148,10 +183,14 @@ app.message(async ({ message, client, logger }) => {
     }
 
     // Notion に各アイテムを登録
+    const toolKey = 'report_detect';
+    const reportLogDatabaseId = resolveReportLogDatabaseId(config, toolKey, message.channel);
+    logger.info(`[report-detect] Notion DB route: tool=${toolKey} channel=${message.channel} db=${reportLogDatabaseId}`);
+
     let loggedCount = 0;
     for (const item of items) {
       try {
-        await addReportLog(item, slackUrl, date);
+        await addReportLog(item, slackUrl, date, { databaseId: reportLogDatabaseId });
         loggedCount++;
       } catch (notionErr) {
         logger.error(
@@ -430,15 +469,23 @@ const port = process.env.PORT || 3000;
   console.log(`Slack→Notion まとめBot 起動中 (port: ${port})`);
   console.log(`Events URL: POST /slack/events`);
 
-  const reportLogDbCheck = await checkReportLogDatabaseAccess();
-  if (reportLogDbCheck.ok) {
-    console.log(`[startup] Notion報告ログDB接続OK: ${reportLogDbCheck.databaseId}`);
-  } else {
+  const config = loadConfig();
+  const reportDbTargets = collectReportLogDatabaseTargets(config);
+  if (reportDbTargets.length === 0) {
     console.error('[startup] Notion報告ログDB接続NG');
-    if (reportLogDbCheck.databaseId) {
-      console.error(`[startup] DB ID: ${reportLogDbCheck.databaseId}`);
-      console.error('[startup] 対象DBをIntegrationに共有しているか確認してください');
+    console.error('[startup] NOTION_REPORT_LOG_DB_ID または report_log_databases を設定してください');
+  }
+  for (const target of reportDbTargets) {
+    const reportLogDbCheck = await checkReportLogDatabaseAccess(target.id);
+    if (reportLogDbCheck.ok) {
+      console.log(`[startup] Notion報告ログDB接続OK: ${target.label} -> ${reportLogDbCheck.databaseId}`);
+    } else {
+      console.error(`[startup] Notion報告ログDB接続NG: ${target.label}`);
+      if (reportLogDbCheck.databaseId) {
+        console.error(`[startup] DB ID: ${reportLogDbCheck.databaseId}`);
+        console.error('[startup] 対象DBをIntegrationに共有しているか確認してください');
+      }
+      console.error(`[startup] 詳細: ${reportLogDbCheck.message}`);
     }
-    console.error(`[startup] 詳細: ${reportLogDbCheck.message}`);
   }
 })();

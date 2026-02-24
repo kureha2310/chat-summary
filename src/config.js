@@ -36,6 +36,54 @@ function loadConfig() {
   if (process.env.GLOBAL_TRIGGER_REACTION) {
     cachedConfig.global_trigger_reaction = process.env.GLOBAL_TRIGGER_REACTION;
   }
+  // 報告ログDBルーティング（環境変数）
+  // 1) REPORT_LOG_DATABASES_JSON
+  //    例: {"default":"db1","tools":{"report_detect":"db2"},"channels":{"C123":"db3"}}
+  // 2) REPORT_LOG_DB_DEFAULT
+  // 3) REPORT_LOG_DB_TOOLS=toolA:db1,toolB:db2
+  // 4) REPORT_LOG_DB_CHANNELS=C123:db1,C456:db2
+  const reportRoutes = {
+    ...(cachedConfig.report_log_databases || {}),
+  };
+
+  if (process.env.REPORT_LOG_DATABASES_JSON) {
+    try {
+      const parsed = JSON.parse(process.env.REPORT_LOG_DATABASES_JSON);
+      if (parsed && typeof parsed === 'object') {
+        if (parsed.default) reportRoutes.default = parsed.default;
+        if (parsed.tools && typeof parsed.tools === 'object') reportRoutes.tools = { ...(reportRoutes.tools || {}), ...parsed.tools };
+        if (parsed.channels && typeof parsed.channels === 'object') {
+          reportRoutes.channels = { ...(reportRoutes.channels || {}), ...parsed.channels };
+        }
+      }
+    } catch (err) {
+      console.error('[WARN] REPORT_LOG_DATABASES_JSON のJSON解析に失敗:', err.message);
+    }
+  }
+
+  if (process.env.REPORT_LOG_DB_DEFAULT) {
+    reportRoutes.default = process.env.REPORT_LOG_DB_DEFAULT;
+  }
+  if (process.env.REPORT_LOG_DB_TOOLS) {
+    const tools = {};
+    process.env.REPORT_LOG_DB_TOOLS.split(',').forEach((pair) => {
+      const sep = pair.indexOf(':');
+      if (sep > 0) tools[pair.slice(0, sep).trim()] = pair.slice(sep + 1).trim();
+    });
+    reportRoutes.tools = { ...(reportRoutes.tools || {}), ...tools };
+  }
+  if (process.env.REPORT_LOG_DB_CHANNELS) {
+    const channels = {};
+    process.env.REPORT_LOG_DB_CHANNELS.split(',').forEach((pair) => {
+      const sep = pair.indexOf(':');
+      if (sep > 0) channels[pair.slice(0, sep).trim()] = pair.slice(sep + 1).trim();
+    });
+    reportRoutes.channels = { ...(reportRoutes.channels || {}), ...channels };
+  }
+
+  if (Object.keys(reportRoutes).length > 0) {
+    cachedConfig.report_log_databases = reportRoutes;
+  }
 
   return cachedConfig;
 }

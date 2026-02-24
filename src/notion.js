@@ -1,6 +1,7 @@
 const { Client } = require('@notionhq/client');
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
+let reportLogDbCache = null;
 
 /**
  * インライン Markdown リンク [text](url) を Notion rich_text 配列に変換する
@@ -152,6 +153,14 @@ async function addReportLog(item, slackUrl, date) {
     return null;
   }
 
+  const db = await getReportLogDatabase(databaseId);
+  const dbProps = db.properties || {};
+  const titleProp = Object.entries(dbProps).find(([, p]) => p.type === 'title');
+  if (!titleProp) {
+    throw new Error('Notion DBにtitleプロパティが見つかりません');
+  }
+  const titlePropName = titleProp[0];
+
   const typeLabels = {
     bracket_missing: '【】漏れ',
     tag_error: 'タグ誤認識',
@@ -162,29 +171,27 @@ async function addReportLog(item, slackUrl, date) {
   };
 
   const properties = {
-    名前: {
+    [titlePropName]: {
       title: [{ text: { content: `${item.customer} / ${item.product}` } }],
-    },
-    日付: {
-      date: { start: date },
-    },
-    報告者: {
-      rich_text: [{ text: { content: item.reporter } }],
-    },
-    種別: {
-      select: { name: typeLabels[item.type] || item.type },
-    },
-    詳細: {
-      rich_text: [{ text: { content: item.detail || '' } }],
-    },
-    Slack: {
-      url: slackUrl,
     },
   };
 
+  const dateProp = findPropertyName(dbProps, ['日付', 'Date'], 'date');
+  const reporterProp = findPropertyName(dbProps, ['報告者', 'Reporter'], 'rich_text');
+  const typeProp = findPropertyName(dbProps, ['種別', 'Type'], 'select');
+  const detailProp = findPropertyName(dbProps, ['詳細', 'Detail'], 'rich_text');
+  const slackProp = findPropertyName(dbProps, ['Slack', 'URL', 'Link'], 'url');
+  const allergenProp = findPropertyName(dbProps, ['アレルゲン', 'Allergen'], 'rich_text');
+
+  if (dateProp) properties[dateProp] = { date: { start: date } };
+  if (reporterProp) properties[reporterProp] = { rich_text: [{ text: { content: item.reporter } }] };
+  if (typeProp) properties[typeProp] = { select: { name: typeLabels[item.type] || item.type } };
+  if (detailProp) properties[detailProp] = { rich_text: [{ text: { content: item.detail || '' } }] };
+  if (slackProp) properties[slackProp] = { url: slackUrl };
+
   // アレルゲンがある場合のみ追加
-  if (item.allergen) {
-    properties['アレルゲン'] = {
+  if (item.allergen && allergenProp) {
+    properties[allergenProp] = {
       rich_text: [{ text: { content: item.allergen } }],
     };
   }
@@ -197,4 +204,47 @@ async function addReportLog(item, slackUrl, date) {
   return { id: response.id, url: response.url };
 }
 
-module.exports = { createPage, appendToPage, addReportLog };
+async function getReportLogDatabase(databaseId) {
+  if (reportLogDbCache && reportLogDbCache.id === databaseId) {
+    return reportLogDbCache;
+  }
+  const db = await notion.databases.retrieve({ database_id: databaseId });
+  reportLogDbCache = db;
+  return db;
+}
+
+function findPropertyName(properties, candidates, expectedType) {
+  for (const name of candidates) {
+    if (properties[name] && properties[name].type === expectedType) {
+      return name;
+    }
+  }
+  return null;
+}
+
+/**
+ * 報告ログDBへのアクセス可否を確認する
+ * @returns {Promise<{ ok: boolean, databaseId?: string, message?: string }>}
+ */
+async function checkReportLogDatabaseAccess() {
+  const databaseId = process.env.NOTION_REPORT_LOG_DB_ID;
+  if (!databaseId) {
+    return {
+      ok: false,
+      message: 'NOTION_REPORT_LOG_DB_ID が未設定です',
+    };
+  }
+
+  try {
+    await getReportLogDatabase(databaseId);
+    return { ok: true, databaseId };
+  } catch (err) {
+    return {
+      ok: false,
+      databaseId,
+      message: err.message,
+    };
+  }
+}
+
+module.exports = { createPage, appendToPage, addReportLog, checkReportLogDatabaseAccess };

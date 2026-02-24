@@ -4,7 +4,7 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const { loadConfig } = require('./config');
 const { addMessage, getMessages, clearMessages, getChannelMessages, clearChannelMessages, getBufferStatus } = require('./buffer');
 const { summarize } = require('./openai');
-const { createPage, appendToPage, addReportLog } = require('./notion');
+const { createPage, appendToPage, addReportLog, checkReportLogDatabaseAccess } = require('./notion');
 const { parseReport, looksLikeReport } = require('./report-parser');
 
 // 必須の環境変数チェック
@@ -154,7 +154,9 @@ app.message(async ({ message, client, logger }) => {
         await addReportLog(item, slackUrl, date);
         loggedCount++;
       } catch (notionErr) {
-        logger.error(`[report-detect] Notion登録失敗:`, notionErr.message);
+        logger.error(
+          `[report-detect] Notion登録失敗: code=${notionErr.code || 'unknown'} status=${notionErr.status || 'unknown'} message=${notionErr.message}`
+        );
       }
     }
 
@@ -427,4 +429,16 @@ const port = process.env.PORT || 3000;
   await app.start(port);
   console.log(`Slack→Notion まとめBot 起動中 (port: ${port})`);
   console.log(`Events URL: POST /slack/events`);
+
+  const reportLogDbCheck = await checkReportLogDatabaseAccess();
+  if (reportLogDbCheck.ok) {
+    console.log(`[startup] Notion報告ログDB接続OK: ${reportLogDbCheck.databaseId}`);
+  } else {
+    console.error('[startup] Notion報告ログDB接続NG');
+    if (reportLogDbCheck.databaseId) {
+      console.error(`[startup] DB ID: ${reportLogDbCheck.databaseId}`);
+      console.error('[startup] 対象DBをIntegrationに共有しているか確認してください');
+    }
+    console.error(`[startup] 詳細: ${reportLogDbCheck.message}`);
+  }
 })();

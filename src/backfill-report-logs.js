@@ -82,7 +82,7 @@ async function main() {
     untilTs = untilDate.getTime() / 1000;
   }
 
-  const token = process.env.SLACK_BOT_TOKEN || process.env.SLACK_USER_TOKEN;
+  const token = process.env.SLACK_USER_TOKEN || process.env.SLACK_BOT_TOKEN;
   if (!token) {
     console.error('[ERROR] SLACK_BOT_TOKEN または SLACK_USER_TOKEN を設定してください');
     process.exit(1);

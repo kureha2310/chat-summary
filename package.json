@@ -7,7 +7,10 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "export": "node src/export-csv.js",
-    "backfill:reports": "node src/backfill-report-logs.js"
+    "backfill:reports": "node src/backfill-report-logs.js",
+    "import:mismatch": "node src/import-mismatch-report.js",
+    "gen:feb": "node src/generate-feb-enriched.js",
+    "import:notion": "node src/import-mismatch-to-notion.js"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -303,6 +303,85 @@ notion_title_prefix: "Slackまとめ"       # Notionページのタイトルの�
 
 ---
 
+## 月次 OCR ミス分析
+
+Slack の確定作業チャンネルから「誰がどんなミスをしたか」を集計して Notion に記録するワークフローです。
+
+### 必要なもの
+
+| ファイル | 内容 | 入手方法 |
+|---|---|---|
+| `mismatch-worker-report-YYYY-MM.csv` | Notion 起票との照合用（確定者目線） | 作業システム等からエクスポート |
+| `mismatch-worker-report-YYYY-MM-ocr-only.csv` | 同上（OCR 作業者目線） | 同上 |
+| `作業詳細_YYYY-MM-DD.csv` | 2月以降の作業ログ（全作業種別） | 作業システム等からエクスポート |
+
+### 月次作業フロー
+
+#### Step 1：Slack → Notion バックフィル（未取り込み分がある場合）
+
+```bash
+npm run backfill:reports -- --channel C08EJ36P9C6 --since 2026-01-01
+```
+
+- `--since` は取り込みたい開始日を指定（既存エントリは自動スキップ）
+- 環境変数 `SLACK_USER_TOKEN` が必要
+
+#### Step 2：エンリッチ済み CSV を生成
+
+**1月分（mismatch CSV が2本ある場合）**
+
+```bash
+npm run import:mismatch
+# 出力: mismatch-enriched-2026-01.csv
+```
+
+`mismatch-worker-report-2026-01.csv` と `mismatch-worker-report-2026-01-ocr-only.csv` を自動で読み込み、OCR 作業者と確定者を紐付けたエンリッチ済み CSV を出力します。
+
+**2月以降（作業詳細 CSV + Notion データを使う場合）**
+
+```bash
+npm run gen:feb -- --work-csv /path/to/作業詳細_YYYY-MM-DD.csv --since 2026-02-01
+# 出力: mismatch-enriched-2026-02.csv
+```
+
+Notion DB に入った起票データと作業詳細 CSV をグループ名＋食べ物名で照合し、OCR 作業者を特定します。
+
+#### Step 3：Notion に一括インポート
+
+```bash
+node src/import-mismatch-to-notion.js \
+  --csv mismatch-enriched-2026-01.csv \
+  --csv mismatch-enriched-2026-02.csv
+```
+
+複数月の CSV を `--csv` で並べて渡すと、新しい Notion DB を自動作成して全件インポートします。`--dry-run` を付けると書き込まずに確認だけできます。
+
+### 出力される Notion DB の列
+
+| 列名 | 内容 |
+|---|---|
+| 名前 | グループ/店舗名 / 食べ物名 |
+| 法人名 | 会社の正式名称 |
+| グループ/店舗名 | 店舗・グループ名 |
+| 食べ物名 | 起票時の商品名 |
+| 食べ物名（CSV詳細） | 作業システム上の商品名 |
+| ミス種別 | 【】漏れ／アレルゲン漏れ／タグ誤認識 等 |
+| **OCR作業者** | ミスをした作業者（照合の主目的） |
+| OCR作業日 | OCR 確認作業を行った日時 |
+| 確定者 | ミスを発見・起票した担当者 |
+| 最終ステータス | 判定済 / 要確認 / 問い合わせ依頼 等 |
+| 起票日 | Notion に起票された日付 |
+| 商品ID | 作業システム上の商品 ID |
+
+### 環境変数（追加分）
+
+| 変数名 | 用途 |
+|---|---|
+| `SLACK_USER_TOKEN` | バックフィル時の Slack API アクセス（`xoxp-` で始まるユーザートークン） |
+| `NOTION_REPORT_LOG_DB_ID` | 報告ログ DB の ID（デフォルト: `193ae48ad12a436eab2cdd28f28f2842`） |
+
+---
+
 ## 今後の予定
 
 - [ ] Discord 対応（リアクションで同様の操作）

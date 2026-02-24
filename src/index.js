@@ -33,6 +33,9 @@ const processingThreads = new Set();
 // スレッドごとの Notion ページ管理（差分追記用）
 // key: threadKey, value: { id, url }
 const pageStore = new Map();
+// 報告ログの重複処理防止（Slack再送対策）
+const processedReportMessages = new Map();
+const REPORT_DEDUP_TTL_MS = 6 * 60 * 60 * 1000;
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -121,6 +124,23 @@ function collectReportLogDatabaseTargets(config) {
   return targets;
 }
 
+function reserveReportMessage(message) {
+  const key = `${message.channel}:${message.ts}`;
+  const now = Date.now();
+
+  // 期限切れを掃除
+  for (const [k, expiresAt] of processedReportMessages.entries()) {
+    if (expiresAt <= now) processedReportMessages.delete(k);
+  }
+
+  const expiresAt = processedReportMessages.get(key);
+  if (expiresAt && expiresAt > now) {
+    return false;
+  }
+  processedReportMessages.set(key, now + REPORT_DEDUP_TTL_MS);
+  return true;
+}
+
 // ==================
 // 確定作業報告の自動検出・ログ
 // ==================
@@ -135,6 +155,10 @@ app.message(async ({ message, client, logger }) => {
 
   const text = message.text || '';
   if (!looksLikeReport(text)) return;
+  if (!reserveReportMessage(message)) {
+    logger.info(`[report-detect] 重複イベントをスキップ: channel=${message.channel} ts=${message.ts}`);
+    return;
+  }
 
   logger.info(`[report-detect] 報告メッセージを検出: ${text.slice(0, 60)}...`);
 

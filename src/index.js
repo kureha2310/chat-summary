@@ -24,6 +24,7 @@ for (const key of required) {
 
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  processBeforeResponse: true,
 });
 
 // まとめ処理中のスレッドを管理（重複実行防止）

@@ -5,12 +5,14 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "export": "node src/export-csv.js"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@notionhq/client": "^2.2.14",
     "@slack/bolt": "^3.17.0",
     "dotenv": "^16.4.5",

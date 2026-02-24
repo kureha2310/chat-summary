@@ -10,7 +10,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  */
 async function parseReport(text, userName) {
   const systemPrompt = `あなたはSlackの確定作業チャンネルの投稿を構造化するアシスタントです。
-食品アレルギー判定の確定作業における報告メッセージを解析し、個別の報告アイテムに分解してください。
+食品アレルギー判定の確定作業における報告メッセージを解析し、個別の報告アイテムに分解してJSON形式で出力してください。
 
 ## 報告の種別（type）
 - bracket_missing: 【】（親切表示/アレルギー別記）の記載漏れ・追記
@@ -21,7 +21,7 @@ async function parseReport(text, userName) {
 - info: 情報共有・その他
 
 ## 出力形式
-{ "items": [ { "customer": "顧客名", "product": "商品名", "type": "種別", "detail": "1文の説明", "allergen": "アレルゲン名またはnull" } ] }
+JSON形式で以下の構造のオブジェクトを出力してください：\n{ "items": [ { "customer": "顧客名", "product": "商品名", "type": "種別", "detail": "1文の説明", "allergen": "アレルゲン名またはnull" } ] }
 
 ## ルール
 - 1つのメッセージに複数の報告が含まれる場合、それぞれ別のアイテムにする
@@ -35,7 +35,7 @@ async function parseReport(text, userName) {
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: text },
+      { role: 'user', content: `${text}\n\nOutput in JSON format.` },
     ],
     temperature: 0,
     response_format: { type: 'json_object' },
@@ -97,7 +97,7 @@ function looksLikeReport(text) {
     /問い合わせ.*(?:依頼|対象|先)/,
     /判定(?:済|根拠|保留)/,
     /規格書.*(?:【|漏|抜|追)/,
-    /[＜■〇].*様/,               // ＜顧客名＞様 or ■顧客名 or 〇商品名
+    /[＜■〇].+/,                 // ＜顧客名＞ or ■顧客名 or 〇商品名
     /未確定/,
     /確定しました/,
   ];

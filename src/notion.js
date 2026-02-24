@@ -154,12 +154,11 @@ async function addReportLog(item, slackUrl, date, options = {}) {
   }
 
   const db = await getReportLogDatabase(databaseId);
-  const dbProps = db.properties || {};
-  const titleProp = Object.entries(dbProps).find(([, p]) => p.type === 'title');
-  if (!titleProp) {
+  const schema = getReportLogSchema(db);
+  if (!schema.titlePropName) {
     throw new Error('Notion DBにtitleプロパティが見つかりません');
   }
-  const titlePropName = titleProp[0];
+  const { titlePropName, dateProp, reporterProp, typeProp, detailProp, slackProp, allergenProp } = schema;
 
   const typeLabels = {
     bracket_missing: '【】漏れ',
@@ -175,13 +174,6 @@ async function addReportLog(item, slackUrl, date, options = {}) {
       title: [{ text: { content: `${item.customer} / ${item.product}` } }],
     },
   };
-
-  const dateProp = findPropertyName(dbProps, ['日付', 'Date'], 'date');
-  const reporterProp = findPropertyName(dbProps, ['報告者', 'Reporter'], 'rich_text');
-  const typeProp = findPropertyName(dbProps, ['種別', 'Type'], 'select');
-  const detailProp = findPropertyName(dbProps, ['詳細', 'Detail'], 'rich_text');
-  const slackProp = findPropertyName(dbProps, ['Slack', 'URL', 'Link'], 'url');
-  const allergenProp = findPropertyName(dbProps, ['アレルゲン', 'Allergen'], 'rich_text');
 
   if (dateProp) properties[dateProp] = { date: { start: date } };
   if (reporterProp) properties[reporterProp] = { rich_text: [{ text: { content: item.reporter } }] };
@@ -213,6 +205,20 @@ async function getReportLogDatabase(databaseId) {
   return db;
 }
 
+function getReportLogSchema(db) {
+  const dbProps = db.properties || {};
+  const titleProp = Object.entries(dbProps).find(([, p]) => p.type === 'title');
+  return {
+    titlePropName: titleProp?.[0] || null,
+    dateProp: findPropertyName(dbProps, ['日付', 'Date'], 'date'),
+    reporterProp: findPropertyName(dbProps, ['報告者', 'Reporter'], 'rich_text'),
+    typeProp: findPropertyName(dbProps, ['種別', 'Type'], 'select'),
+    detailProp: findPropertyName(dbProps, ['詳細', 'Detail'], 'rich_text'),
+    slackProp: findPropertyName(dbProps, ['Slack', 'URL', 'Link'], 'url'),
+    allergenProp: findPropertyName(dbProps, ['アレルゲン', 'Allergen'], 'rich_text'),
+  };
+}
+
 function findPropertyName(properties, candidates, expectedType) {
   for (const name of candidates) {
     if (properties[name] && properties[name].type === expectedType) {
@@ -220,6 +226,26 @@ function findPropertyName(properties, candidates, expectedType) {
     }
   }
   return null;
+}
+
+async function hasReportLogBySlackUrl(slackUrl, options = {}) {
+  const databaseId = options.databaseId || process.env.NOTION_REPORT_LOG_DB_ID;
+  if (!databaseId || !slackUrl) return false;
+
+  const db = await getReportLogDatabase(databaseId);
+  const schema = getReportLogSchema(db);
+  if (!schema.slackProp) return false;
+
+  const res = await notion.databases.query({
+    database_id: databaseId,
+    filter: {
+      property: schema.slackProp,
+      url: { equals: slackUrl },
+    },
+    page_size: 1,
+  });
+
+  return Array.isArray(res.results) && res.results.length > 0;
 }
 
 /**
@@ -246,4 +272,4 @@ async function checkReportLogDatabaseAccess(databaseId = process.env.NOTION_REPO
   }
 }
 
-module.exports = { createPage, appendToPage, addReportLog, checkReportLogDatabaseAccess };
+module.exports = { createPage, appendToPage, addReportLog, hasReportLogBySlackUrl, checkReportLogDatabaseAccess };

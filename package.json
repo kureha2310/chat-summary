@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "export": "node src/export-csv.js"
+    "export": "node src/export-csv.js",
+    "backfill:reports": "node src/backfill-report-logs.js"
   },
   "engines": {
     "node": ">=18.0.0"

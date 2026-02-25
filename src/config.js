@@ -85,6 +85,14 @@ function loadConfig() {
     cachedConfig.report_log_databases = reportRoutes;
   }
 
+  // REPORT_WATCH_CHANNELS=C0123ABCDEF,C9876FEDCBA
+  if (process.env.REPORT_WATCH_CHANNELS) {
+    cachedConfig.report_watch_channels = process.env.REPORT_WATCH_CHANNELS
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
   return cachedConfig;
 }
 

@@ -8,7 +8,7 @@
  *
  * 環境変数:
  *   NOTION_TOKEN
- *   NOTION_REPORT_LOG_DB_ID (デフォルト: 193ae48ad12a436eab2cdd28f28f2842)
+ *   NOTION_REPORT_LOG_DB_ID
  */
 require('dotenv').config();
 
@@ -17,7 +17,7 @@ const path = require('path');
 const { Client } = require('@notionhq/client');
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const REPORT_LOG_DB = process.env.NOTION_REPORT_LOG_DB_ID || '193ae48ad12a436eab2cdd28f28f2842';
+const REPORT_LOG_DB = process.env.NOTION_REPORT_LOG_DB_ID;
 
 function parseArgs() {
   const args = process.argv.slice(2);

@@ -7,6 +7,7 @@
  *
  * 環境変数:
  *   NOTION_TOKEN
+ *   NOTION_PARENT_PAGE_ID  インポート先DBを作成する親ページのID
  */
 require('dotenv').config();
 
@@ -49,16 +50,8 @@ function parseCSV(filePath) {
   });
 }
 
-async function getParentPageId() {
-  // 既存の報告ログDBの親ページを取得
-  for (const dbId of ['30e7d19f477b80fba082ccfd1e44956c', '193ae48ad12a436eab2cdd28f28f2842']) {
-    try {
-      const db = await notion.databases.retrieve({ database_id: dbId });
-      if (db.parent?.type === 'page_id') return db.parent.page_id;
-      if (db.parent?.type === 'block_id') return db.parent.block_id;
-    } catch { /* skip */ }
-  }
-  return null;
+function getParentPageId() {
+  return process.env.NOTION_PARENT_PAGE_ID || null;
 }
 
 async function createDatabase(parentPageId, title) {
@@ -164,7 +157,7 @@ async function main() {
   }
 
   console.log('親ページIDを取得中...');
-  const parentPageId = await getParentPageId();
+  const parentPageId = getParentPageId();
   if (!parentPageId) {
     console.error('[ERROR] 親ページIDを取得できませんでした');
     process.exit(1);

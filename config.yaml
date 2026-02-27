@@ -28,7 +28,7 @@ notion_title_prefix: "Slackまとめ"
 # ==================
 # 監視対象チャンネル（カンマ区切りで複数指定可）
 report_watch_channels:
-  - C0AGQAFJ3B3
+  - C0123ABCDEF
 
 # 種別ごとの自動リアクション
 report_reactions:
@@ -42,7 +42,7 @@ report_reactions:
 # 報告ログDBのルーティング設定（任意）
 # 優先順位: tools > channels > default > NOTION_REPORT_LOG_DB_ID
 report_log_databases:
-  default: 193ae48ad12a436eab2cdd28f28f2842
+  default: your-report-log-database-id
   tools:
-    report_detect: 193ae48ad12a436eab2cdd28f28f2842
+    report_detect: your-report-log-database-id
   channels: {}
